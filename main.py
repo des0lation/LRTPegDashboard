@@ -59,6 +59,19 @@ def maketrade(swapToken,amount,max_slippage_amount):
     return slippage
 
 
+def increment(asset):
+    if asset == "rswETH":
+        return 500
+    if asset == "weETH":
+        return 500
+    if asset == 'pufETH':
+        return 100
+    if asset =='ezETH':
+        return 500
+    if asset == 'rsETH':
+        return 500
+
+
 progress_bar = st.progress(0)
 progress_text = st.empty()
 
@@ -72,8 +85,9 @@ processed_assets = 0
 for asset in token_dict.keys():
     slippage = 0
     swap_amount = 0
+    increment_amount = increment(asset)
     while slippage < max_slippage_amount:
-        swap_amount += 200
+        swap_amount += increment_amount
         slippage = maketrade(asset, swap_amount, max_slippage_amount)
         time.sleep(1.5)  # Be cautious with this delay to avoid hitting API rate limits
 
