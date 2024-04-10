@@ -69,7 +69,7 @@ def increment(asset):
     if asset =='ezETH':
         return 250
     if asset == 'rsETH':
-        return 500
+        return 100
 
 
 progress_bar = st.progress(0)
