@@ -61,13 +61,13 @@ def maketrade(swapToken,amount,max_slippage_amount):
 
 def increment(asset):
     if asset == "rswETH":
-        return 250
+        return 100
     if asset == "weETH":
-        return 250
+        return 100
     if asset == 'pufETH':
         return 100
     if asset =='ezETH':
-        return 500
+        return 250
     if asset == 'rsETH':
         return 500
 
