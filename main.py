@@ -90,7 +90,7 @@ for asset in token_dict.keys():
     while slippage < max_slippage_amount:
         swap_amount += increment_amount
         slippage = maketrade(asset, swap_amount, max_slippage_amount)
-        time.sleep(1.5)  # Be cautious with this delay to avoid hitting API rate limits
+        time.sleep(2)  # Be cautious with this delay to avoid hitting API rate limits
 
     asset_data.append({'Asset': asset, 'Swap Amount': swap_amount})
     processed_assets += 1
