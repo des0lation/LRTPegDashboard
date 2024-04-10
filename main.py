@@ -55,6 +55,7 @@ def maketrade(swapToken,amount,max_slippage_amount):
         outputAmount = int(responsejson['destAmount'])
         slippage = 100*(1- float(responsejson['destUSD'])/float(responsejson['srcUSD']))
     except:
+        st.write("Encountered Paraswap Rate Limit on",swapToken)
         slippage = max_slippage_amount
     return slippage
 
