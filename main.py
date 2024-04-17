@@ -24,7 +24,7 @@ headers = {
 
 st.title("Asset Slippage Dashboard")
 
-max_slippage_amount = st.number_input('Enter max slippage amount (%)', value=1.0, step=0.1)
+max_slippage_amount = st.number_input('Enter max slippage amount (%)', value=0.5, step=0.1)
 
 token_dict = {
     "rswETH":'0xfae103dc9cf190ed75350761e95403b7b8afa6c0',
@@ -58,19 +58,39 @@ def maketrade(swapToken,amount,max_slippage_amount):
         st.write("Encountered Paraswap Rate Limit on",swapToken)
         slippage = max_slippage_amount
     return slippage
+#https://aggregator-api.kyberswap.com/ethereum/api/v1/routes?tokenIn=0xfae103dc9cf190ed75350761e95403b7b8afa6c0&tokenOut=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE&amountIn=2000000000000000000&gasInclude=true
+def makeKyberTrade(token_in,amount_in,max_slippage_amount):
+    base_url = "https://aggregator-api.kyberswap.com/ethereum/api/v1/routes"
+    params = {
+        'tokenIn': token_dict[token_in],
+        'tokenOut': '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
+        'amountIn': amount_in*10**18,
+        'gasInclude': True
+    }
+    response = requests.get(base_url, headers=headers, params=params)
+    try:
+        responsejson = response.json()['data']["routeSummary"]
+        slippage = 100*(1- float(responsejson['amountOutUsd'])/float(responsejson['amountInUsd']))
+    except:
+        st.write("Encountered Kyberswap Rate Limit on",token_in)
+        slippage = max_slippage_amount
+    return slippage
+
+
+
 
 
 def increment(asset):
     if asset == "rswETH":
-        return 100
+        return 250
     if asset == "weETH":
-        return 100
+        return 250
     if asset == 'pufETH':
-        return 100
+        return 250
     if asset =='ezETH':
         return 250
     if asset == 'rsETH':
-        return 100
+        return 250
 
 
 progress_bar = st.progress(0)
@@ -89,8 +109,9 @@ for asset in token_dict.keys():
     increment_amount = increment(asset)
     while slippage < max_slippage_amount:
         swap_amount += increment_amount
-        slippage = maketrade(asset, swap_amount, max_slippage_amount)
-        time.sleep(2)  # Be cautious with this delay to avoid hitting API rate limits
+        slippage = makeKyberTrade(asset, swap_amount, max_slippage_amount)
+        time.sleep(1)
+        print(slippage)
 
     asset_data.append({'Asset': asset, 'Swap Amount': swap_amount})
     processed_assets += 1
