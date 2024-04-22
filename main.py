@@ -4,7 +4,7 @@ import time
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-
+import datetime
 
 url = 'https://api.paraswap.io/prices/'
 
@@ -36,8 +36,6 @@ tvl_data = {
 
 
 eth_price = requests.get('https://coins.llama.fi/prices/current/ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?searchWidth=4h').json()["coins"]["ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"]["price"]
-max_slippage_amount = st.number_input('Enter max slippage amount (%)', value=0.5, step=0.1)
-
 tvl_fig = go.Figure()
 
 # Adding data to the chart
@@ -92,41 +90,48 @@ def increment(asset):
     if asset == 'rsETH':
         return 250
 
-progress_bar = st.progress(0)
-progress_text = st.empty()
+@st.cache_data
+def fetch_and_process_asset_data(max_slippage, current_date):
+    # List to store data for plotting
+    asset_data = []
 
-# List to store data for plotting
-asset_data = []
+    # Processing each asset
+    total_assets = len(token_dict)
+    processed_assets = 0
 
-# Processing each asset
-total_assets = len(token_dict)
-processed_assets = 0
+    progress_bar = st.progress(0)
+    progress_text = st.empty()
 
-for asset in token_dict.keys():
-    slippage = 0
-    swap_amount = 0
-    increment_amount = increment(asset)
-    while slippage < max_slippage_amount:
-        swap_amount += increment_amount
-        slippage = makeKyberTrade(asset, swap_amount, max_slippage_amount)
-        time.sleep(1)
-        print(slippage)
+    for asset in token_dict.keys():
+        slippage = 0
+        swap_amount = 0
+        increment_amount = increment(asset)
+        while slippage < max_slippage:
+            swap_amount += increment_amount
+            slippage = makeKyberTrade(asset, swap_amount, max_slippage)
+            print(slippage)
+            time.sleep(1)  # simulate delay
 
-    asset_data.append({'Asset': asset, 'Swap Amount': swap_amount})
-    processed_assets += 1
-    progress_bar.progress(processed_assets / total_assets)
-    progress_text.text(f"Processing {processed_assets} of {total_assets} assets...")
+        asset_data.append({'Asset': asset, 'Swap Amount': swap_amount})
+        processed_assets += 1
+        progress_bar.progress(processed_assets / total_assets)
+        progress_text.text(f"Processing {processed_assets} of {total_assets} assets...")
+
+    # Clear the progress text and bar after completion
+    progress_text.empty()
+    progress_bar.empty()
+
+    return asset_data
 
 # Clear the progress text and bar after completion
-progress_text.empty()
-progress_bar.empty()
+today = datetime.date.today().isoformat()
+max_slippage_amount = st.number_input('Enter max slippage amount (%)', value=0.5, step=0.1)
+asset_data = fetch_and_process_asset_data(max_slippage_amount, today)
 
-# Creating a DataFrame and plotting
+# Display results
 df = pd.DataFrame(asset_data)
 fig = px.bar(df, x='Asset', y='Swap Amount', title="Trade Sizes by Asset for Sub Max Slippage%")
 st.plotly_chart(fig)
-
-st.write(asset_data)
 
 asset_list = []
 tvl_ratio = []
