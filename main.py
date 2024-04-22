@@ -3,6 +3,8 @@ import requests
 import time
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+
 
 url = 'https://api.paraswap.io/prices/'
 
@@ -21,10 +23,37 @@ headers = {
     'sec-fetch-site': 'same-site',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
 }
-
+st.set_page_config(layout="wide")
 st.title("Asset Slippage Dashboard")
 
+tvl_data = {
+    "rswETH": requests.get('https://api.llama.fi/tvl/swell-liquid-restaking').json(),
+    "ezETH": requests.get('https://api.llama.fi/tvl/renzo').json(),
+    "weETH": requests.get('https://api.llama.fi/tvl/ether.fi-stake').json(),
+    "pufETH": requests.get('https://api.llama.fi/tvl/puffer-finance').json(),
+    "rsETH": requests.get('https://api.llama.fi/tvl/kelp-dao').json()
+}
+
+
+eth_price = requests.get('https://coins.llama.fi/prices/current/ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2?searchWidth=4h').json()["coins"]["ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"]["price"]
 max_slippage_amount = st.number_input('Enter max slippage amount (%)', value=0.5, step=0.1)
+
+tvl_fig = go.Figure()
+
+# Adding data to the chart
+tvl_fig.add_trace(go.Bar(
+    x=["Swell rswETH", "Renzo ezETH", "EtherFi eETH","Puffer Finance pufETH","Kelp rseTH"],
+    y=[tvl_data["rswETH"],tvl_data["ezETH"],tvl_data["weETH"],tvl_data["pufETH"],tvl_data["rsETH"]],
+))
+
+tvl_fig.update_layout(
+    title="LRT Protocl TVLs",
+    xaxis_title="Projects",
+    yaxis_title="Total Value Locked (TVL)",
+    template="plotly_dark"
+)
+
+st.plotly_chart(tvl_fig)
 
 token_dict = {
     "rswETH":'0xfae103dc9cf190ed75350761e95403b7b8afa6c0',
@@ -32,33 +61,8 @@ token_dict = {
     'pufETH':'0xD9A442856C234a39a81a089C06451EBAa4306a72',
     'ezETH':'0xbf5495Efe5DB9ce00f80364C8B423567e58d2110',
     'rsETH':'0xA1290d69c65A6Fe4DF752f95823fae25cB99e5A7'
-
 }
-def maketrade(swapToken,amount,max_slippage_amount):
-    params = {
-        'version': '5',
-        'srcToken': str(token_dict[swapToken]),
-        'destToken': '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-        'amount': str(amount*10**18),
-        'srcDecimals': '18',
-        'destDecimals': '18',
-        'side': 'SELL',
-        'excludeDirectContractMethods': 'false',
-        'network': '1',
-        'otherExchangePrices': 'true',
-        'partner': 'paraswap.io',
-        'userAddress': '0x0000000000000000000000000000000000000000'
-    }
-    response = requests.get(url, headers=headers, params=params).json()
-    try:
-        responsejson = response['priceRoute']
-        outputAmount = int(responsejson['destAmount'])
-        slippage = 100*(1- float(responsejson['destUSD'])/float(responsejson['srcUSD']))
-    except:
-        st.write("Encountered Paraswap Rate Limit on",swapToken)
-        slippage = max_slippage_amount
-    return slippage
-#https://aggregator-api.kyberswap.com/ethereum/api/v1/routes?tokenIn=0xfae103dc9cf190ed75350761e95403b7b8afa6c0&tokenOut=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE&amountIn=2000000000000000000&gasInclude=true
+
 def makeKyberTrade(token_in,amount_in,max_slippage_amount):
     base_url = "https://aggregator-api.kyberswap.com/ethereum/api/v1/routes"
     params = {
@@ -76,10 +80,6 @@ def makeKyberTrade(token_in,amount_in,max_slippage_amount):
         slippage = max_slippage_amount
     return slippage
 
-
-
-
-
 def increment(asset):
     if asset == "rswETH":
         return 250
@@ -91,7 +91,6 @@ def increment(asset):
         return 250
     if asset == 'rsETH':
         return 250
-
 
 progress_bar = st.progress(0)
 progress_text = st.empty()
@@ -126,3 +125,30 @@ progress_bar.empty()
 df = pd.DataFrame(asset_data)
 fig = px.bar(df, x='Asset', y='Swap Amount', title="Trade Sizes by Asset for Sub Max Slippage%")
 st.plotly_chart(fig)
+
+st.write(asset_data)
+
+asset_list = []
+tvl_ratio = []
+for asset in asset_data:
+    asset_list.append(asset['Asset'])
+    tvl = tvl_data[asset['Asset']]
+    ratio = (asset['Swap Amount']*eth_price)/tvl
+    tvl_ratio.append(ratio)
+
+tvl_ratio_fig = go.Figure()
+
+# Adding data to the chart
+tvl_ratio_fig.add_trace(go.Bar(
+    x=asset_list,
+    y=tvl_ratio,
+))
+
+tvl_ratio_fig.update_layout(
+    title="LRT Protocol Liquidity to TVL Ratio",
+    xaxis_title="Projects",
+    yaxis_title="TVL to Liquidity Ratio",
+    template="plotly_dark"
+)
+
+st.plotly_chart(tvl_ratio_fig)
